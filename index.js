@@ -1,33 +1,41 @@
 var fs = require('fs');
 var util = require('util');
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
-
+var ws = require('nodejs-websocket');
 var fileName = './data/data.txt';
 
 function logger() {
   console.log.apply(console, arguments);
 }
+var port = 3001;
 
-app.get('/', function(req, res){
-  res.sendFile('index.html');
-});
+function broadcast(server, msg) {
+  server.connections.forEach(function (conn) {
+    conn.sendText(msg)
+  })
+}
 
-io.on('connection', function(socket) {
-  logger('Socket connected');
-  socket.on('message', function(d) {
-    // Format the data a little.
-    var writeString = util.format("%d,%s\n", Date.now(), d)
+var server = ws.createServer(function (conn) {
+  logger('New connection');
+
+  conn.on('text', function (str) {
+    broadcast(server, str);
+    var writeString = util.format("%d,%s\n", Date.now(), str)
     fs.appendFile(fileName, writeString, function(e) {
       if (e) {
         logger('Problem:', e);
       }
     });
-    io.emit('message', d);
   });
-});
+  conn.on('error', function(e) {
+    logger('Error', e);
+  });
 
-http.listen(3000, function(){
-  logger('listening on *:3000');
+  // When the client closes the connection, notify us
+  conn.on("close", function (code, reason) {
+    logger('Connection closed')
+  });
+}).listen(port);
+server.on('error', function(e) {
+  logger('Server error', e);
 });
+logger('listening on port', port);
