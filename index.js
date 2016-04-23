@@ -1,3 +1,4 @@
+'use strict';
 var fs = require('fs');
 var util = require('util');
 var ws = require('nodejs-websocket');
@@ -39,3 +40,16 @@ server.on('error', function(e) {
   logger('Server error', e);
 });
 logger('listening on port', port);
+if (process.argv[2] == 'play') {
+  // Read file and start to emit from it.
+  var linesToEmit = fs.readFileSync('./data/data.txt').toString().split("\n");
+  var currentLine = 0;
+  var emit = function() {
+    var line = linesToEmit[currentLine].split(',');
+    broadcast(server, line[1]);
+    console.log('broadcast', line[1]);
+    currentLine++;
+    setTimeout(emit, linesToEmit[currentLine].split(',')[0] - line[0]);
+  }
+  emit();
+}
